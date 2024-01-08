@@ -1,0 +1,228 @@
+---
+title: "The job market in the post-covid U.S."
+author: "Siva Sai Akula"
+date: '2023-12-05'
+output:
+  word_document: default
+  html_document: default
+---
+
+## Introduction
+This study examines post-COVID labor statistics and unemployment in the US and their dynamics in the American Jobs marketplace. With reference to information from the United States Department of Labor Bureau of Labor Statistics, this work investigates various occupations and their relation with the number of unemployed people in America as a consequence of COVID-19. We shall be engaging in data visualization and predictive modeling using software such as R. This will be aimed at providing a deeper insight into what is changing jobscape during recovery. For the sake of policy designers, researchers, and other players, this explanation will assist them in comprehending how.
+
+## Loading data and prepare
+```{r}
+job_market_data <- read.csv('Data.csv')
+# Remove commas and convert to numeric for 'unemployed2021'
+job_market_data$unemployed2021 <- as.numeric(gsub(",", "", job_market_data$unemployed2021))
+
+# Remove commas and convert to numeric for 'unemployed2022'
+job_market_data$unemployed2022 <- as.numeric(gsub(",", "", job_market_data$unemployed2022))
+
+# Remove commas and convert to numeric for 'employed2021'
+job_market_data$employed2021 <- as.numeric(gsub(",", "", job_market_data$employed2021))
+
+# Remove commas and convert to numeric for 'employed2022'
+job_market_data$employed2022 <- as.numeric(gsub(",", "", job_market_data$employed2022))
+# Remove rows with NAs
+job_market_data <- na.omit(job_market_data)
+str(job_market_data)
+```
+
+## Question 1: How has the unemployment rate changed over the years in Management Related Occupations?
+This graph shows the unemployment rate by occupation for the years 2021 and 2022. It is a graph showing the number of unemployed persons according to different occupation categories on the x-axis and y-axis. For every occupation, two bars show values for 2021 and 2022. The two fill colors, sky blue and light coral, will be used to represent each of the years respectively; the labels ‘Unemployed 2021’ and ‘ Unemployed 2022′ may be used where necessary for clarity purposes. Looking at the plot, one can see that there was a large drop in jobless among those in Management, Professional, and Related Occupations between the years 2021 and 2022. On the contrary, the unemployment reduction rate for the Management Occupations has been lower than the overall reduction rate for the period.  
+
+```{r}
+
+
+
+# Load necessary libraries
+library(ggplot2)
+
+
+data <-head(job_market_data)
+# Plotting the unemployment trend
+# Define fill colors and labels
+fill_colors <- c("skyblue", "lightcoral")
+fill_labels <- c("Unemployed 2021", "Unemployed 2022")
+
+# Plotting the unemployment trend with color labels
+ggplot(data, aes(x = Occupation, y = unemployed2021)) +
+  geom_bar(stat = "identity", aes(fill = "Unemployed 2021"), position = "dodge") +
+  geom_bar(stat = "identity", aes(x = Occupation, y = unemployed2022, fill = "Unemployed 2022"), position = "dodge") +
+  labs(title = "Unemployment in Management, Professional, and Related Occupations (2021-2022)",
+       x = "Year", y = "Number of Unemployed") +
+  scale_fill_manual(values = fill_colors, labels = fill_labels) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+
+## Question 2: What percentage of Management Occupations were unemployed in 2021 and 2022?
+
+The chart reflects the percentages of the unemployed in Management Occupations for the years 2021 and 2022. By May 2021, the unemployment rate stood at about 1.63% but reduced marginally to roughly 1.00 percent by 2022. This chart gives a visual comparison of these percentages, and it depicts a decrease in unemployment rates from 2021 to 2022. Color differentiates between the two years, which helps identify the trend easily. This information represents a summarised view on a relative basis as far as employment rates are concerned regarding persons in management occupations.
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+
+# Calculate the percentage of unemployment
+total_unemployed_2021 <- sum(job_market_data$unemployed2021[job_market_data$Occupation == "Management occupations"])
+total_unemployed_2022 <- sum(job_market_data$unemployed2022[job_market_data$Occupation == "Management occupations"])
+
+total_employed_2021 <- sum(job_market_data$employed2021[job_market_data$Occupation == "Management occupations"])
+total_employed_2022 <- sum(job_market_data$employed2022[job_market_data$Occupation == "Management occupations"])
+
+percentage_unemployed_2021 <- (total_unemployed_2021 / total_employed_2021) * 100
+percentage_unemployed_2022 <- (total_unemployed_2022 / total_employed_2022) * 100
+
+percentage_data <- data.frame(Year = c("2021", "2022"),
+                              Percentage_Unemployed = c(percentage_unemployed_2021, percentage_unemployed_2022))
+ggplot(percentage_data, aes(x = Year, y = Percentage_Unemployed, fill = Year)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = sprintf("%.2f%%", Percentage_Unemployed)),
+            position = position_dodge(width = 0.9), vjust = -0.5) +  # Adjust vjust as needed
+  labs(title = "Percentage of Unemployment in Management Occupations (2021-2022)",
+       x = "Year", y = "Percentage Unemployed") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme_minimal()
+
+```
+
+
+## Question 3: Can we predict the number of unemployed in Management, Professional, and Related Occupations for the year 2023 using a linear regression model?
+As predicted by the linear regression model, the number of unemployed persons projected for the “Management, professional, and related occupations” category in the year 2022 is estimated based on the total unemployed reported for the year 2021. Blue dots are data, while the red line is a linear regression fit. This message indicates possible problems involving collinearity or data behavior hindering proper estimation of the model in question. Based on a hypothetical value of 1400 unemployed in 2021, the anticipated number of unemployed in 2023 is about 1355.
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+
+# Fit a linear regression model
+lm_model <- lm(unemployed2022 ~ unemployed2021, data = job_market_data[job_market_data$Occupation == "Management, professional, and related occupations", ])
+
+# Create new data for prediction
+new_data <- data.frame(unemployed2021 = 1400)  # Replace 1400 with your desired value
+
+# Make predictions
+prediction <- predict(lm_model, newdata = new_data)
+
+# Print the predicted number of unemployed in 2023
+cat("Predicted Number of Unemployed in 2023:", prediction)
+
+# Visualize the linear regression model
+ggplot(job_market_data[job_market_data$Occupation == "Management, professional, and related occupations", ],
+       aes(x = unemployed2021, y = unemployed2022)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Linear Regression Model for Unemployment (2021-2022)",
+       x = "Number of Unemployed in 2021", y = "Number of Unemployed in 2022") +
+  scale_x_continuous(labels = scales::comma_format()) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme_minimal()
+
+
+```
+
+
+## Question 4: Can we predict the number of unemployed in Occupations for the year 2023 using a Decision Tree model?
+From “Management, professional, and related occupations,” the decision tree predicts the number of unemployed for 2022 using the number of unemployed for 2021. In 2023, using the same decision tree, the expected number of jobless Observed data (blue points), linear regression fit (purple line), and decision tree model fit (green line) are depicted in the chart. A decision tree captures non-linear relations and presents another view of the linear regression model.
+
+
+```{r}
+# Load necessary libraries
+library(tree)
+
+# Fit a decision tree model
+tree_model <- tree(unemployed2022 ~ unemployed2021, data = job_market_data[job_market_data$Occupation == "Management, professional, and related occupations", ])
+
+# Make predictions
+prediction_tree <- predict(tree_model, newdata = new_data)
+
+# Print the predicted number of unemployed in 2023 using Decision Tree
+cat("Predicted Number of Unemployed in 2023 (Decision Tree):", prediction_tree)
+
+# Visualize the decision tree model
+ggplot(job_market_data[job_market_data$Occupation == "Management, professional, and related occupations", ],
+       aes(x = unemployed2021, y = unemployed2022)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", se = FALSE, color = "purple") +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE, color = "green") +
+  labs(title = "Decision Tree Model for Unemployment (2021-2022)",
+       x = "Number of Unemployed in 2021", y = "Number of Unemployed in 2022") +
+  scale_x_continuous(labels = scales::comma_format()) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme_minimal()
+
+
+```
+
+
+## Question 5 How well does the Random Forest model predict the number of unemployed individuals in 2022 based on the number of unemployed in 2021?
+## Question 6 : Which features (variables) contribute the most to the model's predictions?
+
+The random forest model, which was trained on the job market data, predicted a value of about 88.44 for the test set. The variable “unemployed2021” is shown as having the greatest influence on the model’s prognosis, with a value of IncNodePurity = 3106276. The importance of this feature is represented in a bar plot.
+
+```{r}
+# Install and load the 'randomForest' package
+if (!require(randomForest)) {
+  install.packages("randomForest")
+  library(randomForest)
+}
+
+# Set a seed for reproducibility
+set.seed(123)
+
+# Split the data into training and test sets (80% training, 20% test)
+train_index <- sample(seq_len(nrow(job_market_data)), size = 0.8 * nrow(job_market_data))
+train_set <- job_market_data[train_index, ]
+test_set <- job_market_data[-train_index, ]
+
+# Fit a Random Forest model on the training set
+rf_model <- randomForest(unemployed2022 ~ unemployed2021, data = train_set)
+
+# Make predictions on the test set
+predictions_rf <- predict(rf_model, newdata = test_set)
+
+# Evaluate model performance (you may choose a suitable metric)
+# For regression, you might use Mean Absolute Error (MAE), Root Mean Squared Error (RMSE), etc.
+
+# calculate RMSE
+rmse <- sqrt(mean((test_set$unemployed2022 - predictions_rf)^2))
+
+# Print the RMSE
+cat("Root Mean Squared Error (RMSE):", rmse)
+# Get feature importance
+importance_rf <- importance(rf_model)
+
+# Print the feature importance
+print(importance_rf)
+
+# Visualize feature importance
+varImpPlot(rf_model, main = "Random Forest Feature Importance")
+
+```
+
+
+## Conclusion:
+
+In the course of this project, we delved into the analysis of the post-COVID job market in the U.S., utilizing data from the U.S. Department of Labor. Key findings and steps included:
+
+Unemployment Trends: Visualizing and understanding the unemployment trends across different occupational categories from 2021 to 2022.
+
+Linear Regression Modeling: Utilizing linear regression to predict the number of unemployed individuals in 2022 based on 2021 data. The model suggested a potential decline.
+
+Decision Tree Modeling: Introducing a decision tree model for predicting unemployment, offering a non-linear perspective on the relationship between variables.
+
+Random Forest Modeling: Employing a Random Forest model for enhanced predictive accuracy. The Root Mean Squared Error (RMSE) was used to evaluate its performance on a test set.
+
+Feature Importance Analysis: Identifying that "unemployed2021" significantly influences predictions, as evidenced by its high feature importance.
+
+What I Learned:
+
+Modeling Techniques: Gained insights into applying linear regression, decision trees, and random forests for predictive modeling in the job market context.
+
+Evaluation Metrics: Utilized RMSE as an evaluation metric, providing a quantitative measure of model performance.
+
+Feature Importance: Explored feature importance analysis, understanding which variables contribute most to predictions.
