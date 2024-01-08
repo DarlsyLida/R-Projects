@@ -1,0 +1,240 @@
+---
+title: "House price prediction using a range of considerations"
+author: "Vennela Mogili"
+date: '2023-12-05'
+output:
+  html_document: default
+  word_document: default
+---
+
+## Introduction
+
+
+The study takes a closer look at housing market analysis with statistical and machine learning procedures. Using ggplot2, drplyr, and regression models, we look at how house prices changed through time in the top ZIP codes, understand the differences in distribution across states, and examine the association between house size and price. Finally, it is about building sturdy linear regression knowing the predictability. Also, the Random Forest models are used to evaluate the capability of predicting binary outcomes. The multidimensional examination delves into variables that impact house pricing, helping discern predictability in residential market settings.
+
+## Load data and libraries,  then prepare data
+```{r}
+library(tidyverse)
+library(caret)
+
+data <- read.csv('Data.csv')
+# Check for missing values
+missing_values <- colSums(is.na(data))
+print("Missing Values:")
+print(missing_values[missing_values > 0])
+
+# Impute missing values (I choose an appropriate imputation method)
+data <- data %>%
+  fill(everything())  # This fills missing values with the previous non-missing value
+```
+
+## Line Graph showing How has the average house price changed over time for the top 5 ZIP codes with the highest current average price
+The ggplot2 and dplyr packages are helpful to me as they enable me to view the average house prices over some time. Plotted the dataset based on the last date of each ZIP code arranged the data in descending order, and reshaped it in preparation for the plot as per the top 5 zip codes. It generates a line plot using the ggplot function and then uses theme(axis.text.x = element_text(angle=90, vjust=0.5, hjust=1)) to rotate and adjust the x-axis labels. ZIP code 10025 tends towards being the mean house value.
+
+
+```{r}
+#Line Graph showing How has the average house price changed over time for the top 5 ZIP codes with the highest current average price
+library(ggplot2)
+library(dplyr)
+
+
+data %>%
+  arrange(desc(`X31.10.2023`)) %>%  # Sort by the latest date
+  slice_head(n = 5) %>%  # Select top 5 ZIP codes
+  gather(key = "Date", value = "Price", -c(1:10)) %>%  # Reshape data for plotting
+  ggplot(aes(x = Date, y = Price, group = RegionName, color = as.factor(RegionName))) +
+  geom_line() +
+  labs(title = "Average House Price Over Time for Top 5 ZIP Codes",
+       x = "Date",
+       y = "Average House Price") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))  # Rotate x-axis labels
+
+```
+# Showing Top Regions on a Map
+```{r}
+library(dplyr)
+library(plotly)
+
+# Assuming your data includes a 'ZIPCode' column
+# Replace 'ZIPCode' with the actual column name in your dataset
+
+# Identify the top 5 ZIP codes based on the latest date
+top_zips <- data %>%
+  arrange(desc(`X31.10.2023`)) %>%
+  slice_head(n = 5)
+
+# Create a scattergeo plot for the top 5 ZIP codes
+map_plot <- plot_ly(
+  type = 'scattergeo',
+  mode = 'markers+lines',
+  locationmode = 'USA-states',  # Assuming ZIP codes are from the USA
+  locations = top_zips$RegionName,  # Provide the ZIP codes
+  text = paste("ZIP Code: ", top_zips$RegionName, "<br>Price: $", top_zips$`X31.10.2023`),
+  marker = list(size = 10, color = top_zips$`X31.10.2023`, colorscale = 'Viridis')
+) %>%
+  layout(
+    title = "Average House Price for Top 5 Regions",
+    geo = list(
+      scope = 'usa',  # Assuming ZIP codes are from the USA
+      showland = TRUE,
+      landcolor = toRGB("blue"),
+      showcountries = FALSE,
+      showsubunits = FALSE
+    )
+  )
+
+# Display the plot
+map_plot
+```
+
+
+## The distribution of house prices in different states
+A boxplot is used to visualize the distribution of house prices among states. It is presumed that the data set is called ‘data.’ The conditions are plotted along the X axis, with the house prices at the end of October 31st 2023 shown in the Y axis. The inclusion of fill = State in the aes function adds color to the boxplots so that the disparity in house prices across multiple states can be easily seen.
+
+
+```{r}
+# Rhe distribution of house prices in different states?
+library(ggplot2)
+
+# Create a boxplot to visualize the distribution of house prices across states
+ggplot(data, aes(x = State, y = `X31.10.2023`, fill = State)) +
+  
+  # Add boxplots for each state
+  geom_boxplot() +
+  
+  # Add a title to the plot
+  labs(title = "Distribution of House Prices Across States",
+       
+       # Label the x-axis
+       x = "State",
+       
+       # Label the y-axis
+       y = "House Price")
+```
+
+## Correlation between the house size rank and the house price in the dataset
+
+In this sense, the nearly flat line on the plot indicates either a slight or no relationship between house size ranking and house prices by October 31st, 2023. An almost flat bar in a linear regression environment demonstrates a weak or non-existent association between changes in house size ranks and changes in house prices. Data points are scattered, and there is no distinct upward or downward trend to support the linear model. This visual explanation indicates that there are perhaps other variables besides house size that are likely to have a greater influence on house prices for the data set.
+
+```{r}
+# Correlation between the house size rank and the house price in the dataset?
+# Create a scatter plot of House Size Rank vs. House Price
+ggplot(data, aes(x = SizeRank, y = `X31.10.2023`)) +
+  
+  # Add individual data points using points
+  geom_point() +
+  
+  # Add a linear regression line with confidence interval turned off
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  
+  # Add a title to the plot
+  labs(title = "Correlation between House Size Rank and House Price",
+       
+       # Label the x-axis
+       x = "House Size Rank",
+       
+       # Label the y-axis
+       y = "House Price")
+
+
+
+
+```
+
+## using a regression model to predict house prices based on given features ((Regression Model for Predicting House Prices))
+
+A linear regression model is developed to estimate house prices (2023/10/31) using factors such as SizeRank, Metro, and CountyName. The datasets are split into trainings and testings, and the model is checked with respective residuals plot and r-squares scores (coefficients of determination). Residual plot represents the difference between actual and predicted values, while the r² approx 0.79 means the fit of the model to data is good. Residuals plot with a horizontal line at 0 on the Y axis shows no bias towards the model indicating that residuals are centered around the average value of zero.
+
+```{r}
+#using a regression model to predict house prices based on given features 
+#the target variable is `X31.10.2023` and predictors are other relevant features
+# Split the dataset into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(data$X31.10.2023, p = 0.8, list = FALSE)
+train_data <- data[trainIndex, ]
+test_data <- data[-trainIndex, ]
+
+# Ensure that the levels of categorical variables in the test data match those in the training data
+test_data$Metro <- factor(test_data$Metro, levels = levels(train_data$Metro))
+test_data$CountyName <- factor(test_data$CountyName, levels = levels(train_data$CountyName))
+
+# Build a linear regression model
+lm_model <- lm(X31.10.2023 ~ SizeRank + Metro + CountyName, data = train_data)
+
+# Make predictions on the test set
+predictions <- predict(lm_model, newdata = test_data)
+
+# Calculate residuals
+residuals <- test_data$X31.10.2023 - predictions
+# Plot residuals
+ggplot(data.frame(SizeRank = test_data$SizeRank, Residuals = residuals), aes(x = SizeRank, y = Residuals)) +
+  geom_point(color = "blue") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Residuals Plot",
+       x = "House Size Rank",
+       y = "Residuals")
+# Calculate R-squared (coefficient of determination)
+rsquared <- summary(lm_model)$r.squared
+print(paste("R-squared:", rsquared))
+
+# Visualize the actual vs. predicted values
+ggplot() +
+  geom_point(data = test_data, aes(x = SizeRank, y = X31.10.2023), color = "blue") +
+  geom_point(data = data.frame(SizeRank = test_data$SizeRank, X31.10.2023 = predictions), aes(x = SizeRank, y = X31.10.2023), color = "red") +
+  labs(title = "Actual vs. Predicted House Prices",
+       x = "House Size Rank",
+       y = "House Price")
+
+
+```
+
+## Using Random Forest model to effectively predict whether a given value in the column X31.10.2023 will be greater than or equal to 2000 based on the features SizeRank and X31.01.2023
+
+
+
+The Random Forest model predicts X31.10.2023 with the threshold to 2000 for binary classification, the confusion matrix shows 3 true negatives, 5 true positives, 2 false positives, and 1 false negative. The resulting accuracy is 72.73%, indicating a substantial improvement. This suggests the model effectively distinguishes instances above the adjusted threshold, and further tuning may enhance its predictive capabilities.
+```{r}
+
+library(randomForest)
+# Set seed for reproducibility
+set.seed(123)
+
+# Split the data into training (80%) and testing (20%) sets
+train_indices <- sample(1:nrow(data), 0.8 * nrow(data))
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
+
+# Create a Random Forest model using the training set
+model_rf <- randomForest(`X31.10.2023` ~ SizeRank + `X31.01.2023`, data = train_data)
+
+# Make predictions on the test set
+predictions <- predict(model_rf, newdata = test_data)
+
+
+# Convert to binary classification based on a threshold (e.g., 2000)
+threshold <- 2000
+test_data$predicted_class <- ifelse(predictions >= threshold, 1, 0)
+
+# Create a confusion matrix
+conf_matrix <- table(test_data$X31.10.2023 >= threshold, test_data$predicted_class)
+
+# Display the confusion matrix
+print("Confusion Matrix:")
+print(conf_matrix)
+
+# Calculate accuracy, precision, recall, and F1 score
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+
+
+# Display evaluation metrics
+print(paste("Accuracy:", accuracy))
+
+
+
+
+```
+
+## Lesson learnt
+This project helped me understand how exploratory data analysis and visualization can be used to reveal trends and patterns in housing data. I used ggplot2 and dplyr for visualization purposes to know how house prices were moving with time, which states’ houses had higher prices, and what kind of relation existed between house sizes and costs. The prediction of variables such as area and precedents by using the linear regressions made was very important for my understanding. Besides that, using a random forest model revealed the importance of feature selection and fine-tuning for the correct prediction. In summary, the project brought out the diversity of real estate data and how it should be looked at carefully while analyzing.
+
+
